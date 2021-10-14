@@ -1,9 +1,7 @@
 #import spotify
 import requests
 import json
-
-CLIENT_ID = "6e3e135b23c4459bb3d9f4eba9d18091"
-CLIENT_SECRET = "63ba37f67abd47799185b4f7f96b940d"
+import time
 
 AUTH_URL = "https://accounts.spotify.com/api/token"
 BASE_URL = "https://api.spotify.com/v1/"
@@ -32,43 +30,39 @@ def get_track_features(URI, token):
     return resp.json()
 
 def get_entire_playlist(URI, token):
+    data = []
     bounds = {
         "offset" : 0,
         "limit" : 100
     }
 
-    playlist = get_playlist(format_uri(playlist_uri), token, bounds=None)
+    playlist = get_playlist(format_uri(URI), token)
     total = playlist["total"]
+
     while (bounds["offset"] + bounds["limit"] <= playlist["total"]):
 
         for item in playlist["items"]:
             name, uri_track = item["track"]["name"], item["track"]["uri"]
-            # print("{} - {}".format(name, format_uri(uri_track)))
+            print("{} - {}".format(name, format_uri(uri_track)))
             features = get_track_features(format_uri(uri_track), token)
             data.append(features)
 
         bounds["offset"] += bounds["limit"]
-        playlist = get_playlist(format_uri(playlist_uri), token, bounds)
-
-
+        playlist = get_playlist(format_uri(URI), token, bounds)
+        while "error" in playlist.keys():
+            print("TIMEOUT")
+            time.sleep(5)
+            playlist = get_playlist(format_uri(URI), token, bounds)
 
 if __name__ == "__main__":
-    playlist_uri = "spotify:playlist:6u71jGN1StKMnIsnJutfsw"
-    data = []
-    token = get_token({"id" : CLIENT_ID, "secret" : CLIENT_SECRET})
+    credentials = None
+    with open("data/credentials.json", 'r') as f:
+        credentials = json.load(f)
+
+    token = get_token(credentials)
     print("TOKEN : {}".format(token))
 
-    # playlist = get_playlist("6u71jGN1StKMnIsnJutfsw", token)
-    print("BOUNDS : {}".format(bounds))
-
-    # playlist = get_playlist(format_uri(playlist_uri), token, bounds)
-    # print(playlist)
-    # for item in playlist["items"]:
-    #     name, uri_track = item["track"]["name"], item["track"]["uri"]
-    #     # print("{} - {}".format(name, format_uri(uri_track)))
-    #     features = get_track_features(format_uri(uri_track), token)
-    #     data.append(features)
-
+    data = get_entire_playlist("spotify:playlist:6u71jGN1StKMnIsnJutfsw", token)
 
     print("#######################################################")
     with open("data/features.json", 'w') as f:

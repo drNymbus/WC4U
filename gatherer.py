@@ -1,7 +1,9 @@
 import requests
 import json
 import time
-import os
+# import os
+import sys
+import argparse
 
 AUTH_URL = "https://accounts.spotify.com/api/token"
 BASE_URL = "https://api.spotify.com/v1/"
@@ -78,16 +80,6 @@ class CollectMusic(object):
         while (self.bounds["offset"] == 0 or len(data) < self.response["total"]):
 
             try:
-                # item = None
-                # for item in self.response["items"]:
-                #     # if item is not None:
-                #     if key is not None:
-                #         item = item[key]
-                #     elif gatherer is not None:
-                #         item = gatherer(item)
-                #     data.append(item)
-                # print("GET_ALL({}/{})".format(len(data), self.response["total"]))
-                # if self.response["items"] is not None:
                 if key is not None:
                     data += [item[key] for item in self.response["items"]]
                 elif gatherer is not None:
@@ -136,23 +128,36 @@ class CollectMusic(object):
             return self.request(url)
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--collect", help="Collect every music find in different spotify categories", action="store_true")
+    parser.add_argument("-u", "--user", type=str, help="Collect a specfified spotify playlist")
+
+    args = parser.parse_args()
+
     collector = CollectMusic("credentials.json")
     collector.get_token()
     print(collector.token)
 
+    if args.collect:
 
-    for cat in collector.get_categories():
-        print("CATEGORY : ", cat)
+        for cat in collector.get_categories():
+            print("CATEGORY : ", cat)
 
-        data = []
-        for playlist in collector.get_category_playlists(cat):
+            data = []
+            for playlist in collector.get_category_playlists(cat):
 
-            print("\tGET_PLAYLIST : ", playlist)
-            tracks = collector.get_playlist_tracks(playlist)
-            tracks = [x for x in tracks if x is not None]
-            features = collector.get_audio_features(tracks)
-            data += features["audio_features"]
+                print("\tGET_PLAYLIST : ", playlist)
+                tracks = collector.get_playlist_tracks(playlist)
+                tracks = [x for x in tracks if x is not None]
+                features = collector.get_audio_features(tracks)
+                data += features["audio_features"]
 
-        with open("data/{}.json".format(cat), 'a') as f:
-            json.dump(data, f)
+            with open("data/{}.json".format(cat), 'a') as f:
+                json.dump(data, f)
 
+    elif args.user:
+
+        tracks = collector.get_playlist_tracks(args.user)
+        features = collector.get_audio_features(tracks)
+        with open("data/likes.json", 'a') as f:
+            json.dump(features["audio_features"], f)
